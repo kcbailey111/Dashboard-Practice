@@ -1234,3 +1234,33 @@ document.getElementById('detailModal').addEventListener('click', function(e) { i
 // Initialize user identity then render
 initUser().then(() => refreshAll());
 
+// Header slideshow: rotate the banner background images from the img folder.
+(function initHeaderSlideshow() {
+  const slides = document.querySelectorAll('.header-slide');
+  if (slides.length < 2) return;
+
+  const images = [
+    'img/CityofSpartanburg.jpg',
+    'img/citymural.jpg',
+    'img/sc-barnet-park-aerial.jpg',
+    'img/Spartanburg-Judicial-Center_25_04_9649_Edit_1_72dpi.jpg'
+  ];
+
+  slides.forEach((slide, index) => {
+    slide.style.backgroundImage = `url('${images[index % images.length]}')`;
+  });
+
+  let activeIndex = 0;
+  window.setInterval(() => {
+    const nextIndex = (activeIndex + 1) % images.length;
+    const currentSlide = slides[activeIndex % slides.length];
+    const nextSlide = slides[nextIndex % slides.length];
+    if (!currentSlide || !nextSlide) return;
+
+    nextSlide.style.backgroundImage = `url('${images[nextIndex]}')`;
+    currentSlide.classList.remove('is-active');
+    nextSlide.classList.add('is-active');
+    activeIndex = nextIndex;
+  }, 6500);
+})();
+
