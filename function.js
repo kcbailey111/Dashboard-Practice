@@ -1,4 +1,5 @@
 ﻿// ====================== DATA LAYER ======================
+// Local state is persisted in localStorage so the dashboard survives refreshes.
 let assets = JSON.parse(localStorage.getItem('spartanburg_assets') || '[]');
 let auditLog = JSON.parse(localStorage.getItem('spartanburg_audit') || '[]');
 let currentUser = JSON.parse(localStorage.getItem('spartanburg_user') || 'null');
@@ -21,6 +22,7 @@ function genId() {
 }
 
 // ====================== USER IDENTITY ======================
+// Prefer SharePoint identity when available; otherwise show a guest fallback.
 async function detectSharePointUser() {
   try {
     // Try SharePoint REST API for current user
@@ -82,6 +84,7 @@ async function initUser() {
 
 function renderUserBar() {
   if (!currentUser) return;
+  // Use initials so the user bar stays compact even with long names.
   const initials = currentUser.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
   document.getElementById('userAvatar').textContent = initials;
   document.getElementById('userDisplayName').textContent = currentUser.name;
@@ -95,6 +98,7 @@ function getUserName() {
 }
 
 // ====================== AUDIT LOGGING ======================
+// Audit entries capture the before/after state of edits for traceability.
 function getFieldLabel(field) {
   const labels = {
     name:'Asset Name', category:'Category', location:'Location/Dept',
@@ -129,6 +133,7 @@ function logAudit(action, asset, oldAsset) {
   };
 
   if (action === 'EDIT' && oldAsset) {
+    // Only store edit records when one of the tracked fields changed.
     const trackedFields = ['name','category','location','condition','status','rating',
       'purchaseDate','purchaseCost','replaceDate','replaceCost','notes'];
     trackedFields.forEach(field => {
@@ -163,6 +168,7 @@ function logBulkImport(count, updated) {
 }
 
 // ====================== NAVIGATION ======================
+// Switch the visible page, then refresh shared widgets to keep filters in sync.
 function showPage(name, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -172,6 +178,7 @@ function showPage(name, el) {
 }
 
 // ====================== DATE ======================
+// Header date is set once at load so the chrome feels current without polling.
 function setDate() {
   const d = new Date();
   document.getElementById('headerDate').textContent = d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
@@ -179,6 +186,7 @@ function setDate() {
 setDate();
 
 // ====================== MODAL ======================
+// The editor modal is reused for both create and edit flows.
 function openAddAsset() {
   editingId = null;
   document.getElementById('modalTitle').textContent = 'Add New Asset';
@@ -226,6 +234,7 @@ function clearForm() {
 }
 
 // ====================== STARS ======================
+// Rating stars are stored separately so hover and click interactions stay simple.
 function setStars(val) {
   starValue = val;
   document.querySelectorAll('#starRating .star').forEach((s, i) => {
@@ -242,6 +251,7 @@ document.querySelectorAll('#starRating .star').forEach(s => {
 document.getElementById('starRating').addEventListener('mouseleave', () => setStars(starValue));
 
 // ====================== SAVE ASSET ======================
+// Validate required fields, persist the asset, and write the audit record together.
 function saveAsset() {
   const name = document.getElementById('fName').value.trim();
   const category = document.getElementById('fCategory').value;
@@ -292,6 +302,7 @@ function deleteAsset(id) {
 }
 
 // ====================== DETAIL VIEW ======================
+// Build a rich read-only summary with quick access to edit, delete, and history.
 function showDetail(id) {
   const a = assets.find(x => x.id === id);
   if (!a) return;
@@ -341,6 +352,7 @@ function showDetail(id) {
 }
 
 // ====================== FILTERS ======================
+// Keep table search fast by filtering in-memory before re-rendering the list.
 function filterAssets() {
   const q = document.getElementById('searchInput').value.toLowerCase();
   const cat = document.getElementById('filterCategory').value;
@@ -359,6 +371,7 @@ function filterAssets() {
 }
 
 // ====================== RENDERS ======================
+// Shared rendering helpers keep condition and currency formatting consistent.
 function condTag(c) {
   const cls = { Good: 'tag-good', Fair: 'tag-fair', Poor: 'tag-poor', Critical: 'tag-critical' };
   const icons = { Good: '✅', Fair: '🟡', Poor: '🔴', Critical: '⛔' };
@@ -411,6 +424,7 @@ function renderAssetTable(list) {
 }
 
 function refreshDashboard() {
+  // Dashboard widgets summarize the current asset set at a glance.
   const now = new Date();
   const in2yr = new Date(); in2yr.setFullYear(in2yr.getFullYear() + 2);
   const in5yr = new Date(); in5yr.setFullYear(in5yr.getFullYear() + 5);
@@ -462,7 +476,7 @@ function refreshDashboard() {
     </div>`;
   }
 
-  // Upcoming replacements
+  // Upcoming replacements are rendered in date order so urgency is obvious.
   const upcoming = assets.filter(a => a.replaceDate).sort((a, b) => new Date(a.replaceDate) - new Date(b.replaceDate)).slice(0, 5);
   const upEl = document.getElementById('upcomingList');
   if (!upcoming.length) {
@@ -483,7 +497,7 @@ function refreshDashboard() {
     }).join('') + '</div>';
   }
 
-  // Category chart
+  // Category spend is shown as a simple horizontal ranking instead of a chart library.
   const catCosts = {};
   assets.forEach(a => { catCosts[a.category] = (catCosts[a.category] || 0) + (a.replaceCost || 0); });
   const catEl = document.getElementById('categoryChart');
@@ -504,7 +518,7 @@ function refreshDashboard() {
     `).join('');
   }
 
-  // Recent activity
+  // Recent activity is derived from the latest updatedAt timestamps.
   const recentEl = document.getElementById('recentActivity');
   const recent = [...assets].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)).slice(0, 5);
   if (!recent.length) {
@@ -645,17 +659,17 @@ function renderReplacements() {
     const within1yr = list.filter(a => { const d = new Date(a.replaceDate); return d >= now && d <= new Date(now.getFullYear() + 1, now.getMonth(), now.getDate()); }).reduce((s, a) => s + (a.replaceCost || 0), 0);
     budgetEl.innerHTML = `
       <div style="display:flex;flex-direction:column;gap:12px">
-        <div style="background:#fdecea;border-radius:8px;padding:14px 16px">
-          <div style="font-size:11px;font-weight:600;letter-spacing:0.5px;color:#c0392b;text-transform:uppercase">Overdue / Past Due</div>
-          <div style="font-size:24px;font-weight:700;color:#c0392b;margin-top:4px">${fmtCurrency(overdue)}</div>
+        <div class="budget-block overdue">
+          <div class="budget-label">Overdue / Past Due</div>
+          <div class="budget-value">${fmtCurrency(overdue)}</div>
         </div>
-        <div style="background:#fffbf4;border-radius:8px;padding:14px 16px">
-          <div style="font-size:11px;font-weight:600;letter-spacing:0.5px;color:#d4850a;text-transform:uppercase">Within 12 Months</div>
-          <div style="font-size:24px;font-weight:700;color:#d4850a;margin-top:4px">${fmtCurrency(within1yr)}</div>
+        <div class="budget-block soon">
+          <div class="budget-label">Within 12 Months</div>
+          <div class="budget-value">${fmtCurrency(within1yr)}</div>
         </div>
-        <div style="background:#f2fbf9;border-radius:8px;padding:14px 16px">
-          <div style="font-size:11px;font-weight:600;letter-spacing:0.5px;color:#1a7a6e;text-transform:uppercase">Total (Filtered)</div>
-          <div style="font-size:24px;font-weight:700;color:#1a7a6e;margin-top:4px">${fmtCurrency(total)}</div>
+        <div class="budget-block total">
+          <div class="budget-label">Total (Filtered)</div>
+          <div class="budget-value">${fmtCurrency(total)}</div>
         </div>
       </div>
     `;

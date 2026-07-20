@@ -126,7 +126,157 @@ body {
 	border: 1px solid var(--border); box-shadow: var(--shadow);
 }
 
-/* DEPARTMENT SUMMARY */
+/* Replacement schedule styles: timeline cards, urgency states, and budget callouts. */
+#page-replacements .filter-bar {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+	padding: 16px 18px;
+	margin-bottom: 18px;
+	background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+	border: 1px solid var(--border);
+	border-radius: 14px;
+	box-shadow: var(--shadow);
+}
+#page-replacements .filter-select {
+	min-width: 180px;
+	max-width: 240px;
+	background: #fff;
+	border-radius: 10px;
+}
+#page-replacements .two-col {
+	align-items: start;
+}
+#page-replacements .card {
+	border-radius: 16px;
+	background: linear-gradient(180deg, #ffffff 0%, #fcfdff 100%);
+}
+#replacementTimeline,
+#budgetSummary {
+	display: block;
+}
+.timeline {
+	display: grid;
+	gap: 12px;
+}
+.tl-item {
+	display: grid;
+	grid-template-columns: 48px minmax(0, 1fr) auto;
+	gap: 14px;
+	align-items: center;
+	padding: 14px 16px;
+	border-radius: 14px;
+	border: 1px solid var(--border);
+	background: #fff;
+	box-shadow: var(--shadow);
+	position: relative;
+	overflow: hidden;
+	transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.tl-item:hover {
+	transform: translateY(-2px);
+	box-shadow: var(--shadow-lg);
+	border-color: rgba(0, 127, 163, 0.22);
+}
+.tl-item::before {
+	content: '';
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 5px;
+	height: 100%;
+	background: var(--gold);
+}
+.tl-item.urgent::before { background: var(--red-light); }
+.tl-item.soon::before { background: var(--amber); }
+.tl-item.planned::before { background: var(--teal-light); }
+.tl-icon {
+	width: 48px;
+	height: 48px;
+	border-radius: 14px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 22px;
+	background: rgba(0, 107, 138, 0.08);
+	flex: 0 0 auto;
+}
+.tl-item.urgent .tl-icon { background: rgba(192, 57, 43, 0.12); }
+.tl-item.soon .tl-icon { background: rgba(212, 133, 10, 0.14); }
+.tl-item.planned .tl-icon { background: rgba(0, 127, 163, 0.12); }
+.tl-info { min-width: 0; }
+.tl-name {
+	font-size: 14px;
+	font-weight: 700;
+	line-height: 1.35;
+	color: var(--navy);
+	margin-bottom: 4px;
+}
+.tl-meta {
+	font-size: 12px;
+	color: var(--text-mid);
+	line-height: 1.45;
+}
+.tl-cost {
+	font-family: 'DM Mono', monospace;
+	font-size: 13px;
+	font-weight: 700;
+	color: var(--teal);
+	white-space: nowrap;
+}
+#budgetSummary {
+	display: grid;
+	gap: 12px;
+}
+.budget-block {
+	padding: 14px 16px;
+	border-radius: 14px;
+	border: 1px solid rgba(221, 227, 236, 0.95);
+	box-shadow: var(--shadow);
+	background: linear-gradient(180deg, #ffffff 0%, #fcfdff 100%);
+}
+.budget-block.overdue {
+	background: linear-gradient(180deg, #fff7f6 0%, #fffdfd 100%);
+	border-color: rgba(192, 57, 43, 0.14);
+}
+.budget-block.soon {
+	background: linear-gradient(180deg, #fffaf0 0%, #fffefb 100%);
+	border-color: rgba(212, 133, 10, 0.14);
+}
+.budget-block.total {
+	background: linear-gradient(180deg, #f4fbfd 0%, #ffffff 100%);
+	border-color: rgba(0, 127, 163, 0.14);
+}
+.budget-label {
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.7px;
+	text-transform: uppercase;
+	margin-bottom: 6px;
+}
+.budget-value {
+	font-size: 28px;
+	font-weight: 800;
+	line-height: 1.05;
+}
+.budget-block.overdue .budget-label,
+.budget-block.overdue .budget-value { color: var(--red); }
+.budget-block.soon .budget-label,
+.budget-block.soon .budget-value { color: var(--amber); }
+.budget-block.total .budget-label,
+.budget-block.total .budget-value { color: var(--teal); }
+.budget-block .budget-label { color: var(--text-light); }
+
+@media (max-width: 900px) {
+	#page-replacements .filter-bar { align-items: stretch; }
+	#page-replacements .filter-select { width: 100%; max-width: none; }
+	.tl-item { grid-template-columns: 44px minmax(0, 1fr); }
+	.tl-cost { grid-column: 2; justify-self: start; }
+	#page-replacements .two-col { grid-template-columns: 1fr; }
+}
+
+/* Department summary styles: filter bar, department cards, and severity tags. */
 #page-departments {
 	--dept-accent: var(--navy);
 }
@@ -323,6 +473,7 @@ body {
 	box-shadow: 0 8px 18px rgba(0, 127, 163, 0.12);
 	border-color: rgba(0, 127, 163, 0.35);
 }
+/* Shared tag component used across condition labels, statuses, and summaries. */
 .tag {
 	display: inline-flex;
 	align-items: center;
@@ -350,11 +501,11 @@ body {
 	.dept-view-btn { width: 100%; }
 }
 
-/* ASSET TABLE */
+/* Base table wrapper used by asset, projection, budget, and audit listings. */
 .table-wrap { overflow-x: auto; }
 /* Remaining CSS was truncated during extraction — add any additional rules as needed. */
 
-/* MODAL / FORM CONTROLS */
+/* Modal and form controls shared by the asset editor and detail panel. */
 .modal-overlay {
 	display: none; position: fixed; inset: 0; background: rgba(13,34,64,0.5);
 	z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(2px);
