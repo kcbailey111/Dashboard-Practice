@@ -68,9 +68,6 @@ async function detectSharePointUser() {
 }
 
 async function initUser() {
-  // If we already have a stored user, use it but try to refresh from SP
-  const stored = JSON.parse(localStorage.getItem('spartanburg_user') || 'null');
-
   const spUser = await detectSharePointUser();
   if (spUser && spUser.name) {
     currentUser = spUser;
@@ -79,29 +76,7 @@ async function initUser() {
     return;
   }
 
-  // Fallback: use stored manual user
-  if (stored && stored.name) {
-    currentUser = stored;
-    renderUserBar();
-    return;
-  }
-
-  // No user detected — prompt
-  promptUserName();
-}
-
-function promptUserName() {
-  document.getElementById('userPromptModal').classList.add('open');
-  setTimeout(() => document.getElementById('manualUserName').focus(), 100);
-}
-
-function saveManualUser() {
-  const name = document.getElementById('manualUserName').value.trim();
-  if (!name) { alert('Please enter your name.'); return; }
-  const dept = document.getElementById('manualUserDept').value.trim();
-  currentUser = { name, dept, source: 'manual' };
-  localStorage.setItem('spartanburg_user', JSON.stringify(currentUser));
-  document.getElementById('userPromptModal').classList.remove('open');
+  currentUser = { name: 'Guest User', source: 'guest' };
   renderUserBar();
 }
 
@@ -109,11 +84,9 @@ function renderUserBar() {
   if (!currentUser) return;
   const initials = currentUser.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
   document.getElementById('userAvatar').textContent = initials;
-  const label = currentUser.dept ? `${currentUser.name} · ${currentUser.dept}` : currentUser.name;
-  document.getElementById('userDisplayName').textContent = label;
-  document.getElementById('changeUserBtn').style.display = currentUser.source === 'manual' ? 'inline' : 'none';
+  document.getElementById('userDisplayName').textContent = currentUser.name;
   const meta = currentUser.source === 'sharepoint' || currentUser.source === 'sharepoint-context' || currentUser.source === 'sharepoint-modern'
-    ? '✓ Authenticated via SharePoint' : '⚠ Manual name — not verified';
+    ? '✓ Authenticated via SharePoint' : 'Guest access';
   document.getElementById('userBarMeta').textContent = meta;
 }
 
@@ -1150,14 +1123,4 @@ document.getElementById('detailModal').addEventListener('click', function(e) { i
 })();
 // Initialize user identity then render
 initUser().then(() => refreshAll());
-
-// Allow pressing Enter in user prompt
-document.getElementById('manualUserName').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') saveManualUser();
-});
-
-// Close user prompt modal on overlay click only if user is already set
-document.getElementById('userPromptModal').addEventListener('click', function(e) {
-  if (e.target === this && currentUser) this.classList.remove('open');
-});
 

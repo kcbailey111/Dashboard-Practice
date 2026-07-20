@@ -251,7 +251,6 @@ textarea { resize: vertical; min-height: 70px; }
 #alertBadge { background: #c0392b; color: white; border-radius: 10px; padding: 1px 6px; font-size: 10px; margin-left: 4px; display: inline-block; }
 .modal.small { max-width: 420px; }
 .city-seal { background: transparent; overflow: hidden; padding: 0; }
-#manualUserName { width: 100%; }
 #assetCount, #deptCount, #auditCount { font-size: 12px; color: var(--text-light); white-space: nowrap; }
 #deptKpiGrid { margin-bottom: 20px; }
 #budgetKpiGrid { margin-bottom: 24px; }
