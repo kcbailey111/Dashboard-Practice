@@ -396,6 +396,22 @@ function fmtDate(d) {
   return `${m}/${day}/${y}`;
 }
 
+function getReplacementStatus(asset, now = new Date()) {
+  if (!asset.replaceDate) return { label: 'Planned', level: 'planned', days: null };
+  const days = Math.ceil((new Date(asset.replaceDate) - now) / (24 * 3600 * 1000));
+  if (days < 0) return { label: 'Overdue', level: 'urgent', days };
+  if (days < 180) return { label: 'Soon', level: 'soon', days };
+  if (days < 365) return { label: 'Planned', level: 'planned', days };
+  return { label: 'Future', level: 'planned', days };
+}
+
+function getYearLabel(currentYear, year) {
+  if (year < currentYear) return `${currentYear - year} yr${currentYear - year === 1 ? '' : 's'} past`;
+  if (year === currentYear) return 'Current year';
+  if (year === currentYear + 1) return 'Next year';
+  return `FY ${year}`;
+}
+
 function renderAssetTable(list) {
   const tbody = document.getElementById('assetTableBody');
   if (!list || !list.length) {
@@ -542,31 +558,72 @@ function refreshProjections() {
   const currentYear = now.getFullYear();
   const years = Array.from({length: 7}, (_, i) => currentYear + i);
 
-  // By year
   const byYear = {};
-  years.forEach(y => byYear[y] = []);
+  years.forEach(y => { byYear[y] = []; });
   assets.forEach(a => {
-    if (a.replaceDate) {
-      const y = new Date(a.replaceDate).getFullYear();
-      if (byYear[y]) byYear[y].push(a);
-    }
+    if (!a.replaceDate) return;
+    const year = new Date(a.replaceDate).getFullYear();
+    if (byYear[year]) byYear[year].push(a);
+  });
+
+  const yearStats = years.map(year => {
+    const items = byYear[year];
+    const total = items.reduce((sum, a) => sum + (a.replaceCost || 0), 0);
+    return {
+      year,
+      items,
+      total,
+      count: items.length,
+      overdue: items.filter(a => new Date(a.replaceDate) < now).length,
+      critical: items.filter(a => a.condition === 'Critical' || a.condition === 'Poor').length
+    };
   });
 
   const projBarsEl = document.getElementById('projectionBars');
-  const yearTotals = years.map(y => byYear[y].reduce((s, a) => s + (a.replaceCost || 0), 0));
-  const maxY = Math.max(...yearTotals, 1);
-  if (!yearTotals.some(v => v > 0)) {
+  const totalForecast = yearStats.reduce((sum, row) => sum + row.total, 0);
+  const next3Years = yearStats.slice(0, 3).reduce((sum, row) => sum + row.total, 0);
+  const overdueForecast = yearStats.filter(row => row.year < currentYear).reduce((sum, row) => sum + row.total, 0);
+  const peakYear = yearStats.reduce((best, row) => row.total > best.total ? row : best, yearStats[0]);
+  if (!yearStats.some(row => row.total > 0)) {
     projBarsEl.innerHTML = '<div class="empty"><div class="empty-icon">📈</div><div class="empty-text">Add assets with replacement dates to see projections</div></div>';
   } else {
+    const maxY = Math.max(...yearStats.map(row => row.total), 1);
     projBarsEl.innerHTML = `
-      <div class="bar-chart">
-        ${years.map((y, i) => {
-          const h = Math.max((yearTotals[i] / maxY) * 68, yearTotals[i] ? 6 : 0);
-          const color = i === 0 ? '#c0392b' : i <= 1 ? '#e67e22' : i <= 3 ? '#1e4a7a' : '#8a9bb8';
-          return `<div class="bar-col">
-            <div class="bar-val">${yearTotals[i] ? fmtCurrency(yearTotals[i]) : ''}</div>
-            <div class="bar-fill" style="height:${h}px;background:${color}"></div>
-            <div class="bar-label">${y}</div>
+      <div class="forecast-summary">
+        <div class="forecast-stat red">
+          <div class="forecast-stat-label">Overdue in forecast window</div>
+          <div class="forecast-stat-value">${fmtCurrency(overdueForecast)}</div>
+          <div class="forecast-stat-sub">${yearStats.filter(row => row.year < currentYear).reduce((sum, row) => sum + row.count, 0)} assets</div>
+        </div>
+        <div class="forecast-stat gold">
+          <div class="forecast-stat-label">Next 3 years</div>
+          <div class="forecast-stat-value">${fmtCurrency(next3Years)}</div>
+          <div class="forecast-stat-sub">${yearStats.slice(0, 3).reduce((sum, row) => sum + row.count, 0)} assets</div>
+        </div>
+        <div class="forecast-stat teal">
+          <div class="forecast-stat-label">7-year total</div>
+          <div class="forecast-stat-value">${fmtCurrency(totalForecast)}</div>
+          <div class="forecast-stat-sub">Peak year ${peakYear.year} · ${fmtCurrency(peakYear.total)}</div>
+        </div>
+      </div>
+      <div class="forecast-grid">
+        ${yearStats.map((row, index) => {
+          const pct = row.total ? (row.total / maxY) * 100 : 0;
+          const delta = index > 0 ? row.total - yearStats[index - 1].total : 0;
+          const deltaLabel = index > 0 ? `${delta >= 0 ? '▲' : '▼'} ${fmtCurrency(Math.abs(delta))}` : 'Baseline';
+          const yearLevel = row.year < currentYear ? 'past' : row.year === currentYear ? 'current' : row.year <= currentYear + 2 ? 'near' : 'future';
+          return `<div class="forecast-year-card ${yearLevel}">
+            <div class="forecast-year-head">
+              <div>
+                <div class="forecast-year">${row.year}</div>
+                <div class="forecast-year-label">${getYearLabel(currentYear, row.year)}</div>
+              </div>
+              <div class="forecast-pill ${row.overdue ? 'urgent' : row.critical ? 'soon' : 'planned'}">${row.count} asset${row.count === 1 ? '' : 's'}</div>
+            </div>
+            <div class="forecast-year-value">${row.total ? fmtCurrency(row.total) : '—'}</div>
+            <div class="forecast-year-sub">${row.overdue ? `${row.overdue} overdue` : row.critical ? `${row.critical} high risk` : `${row.items.length} scheduled`}</div>
+            <div class="forecast-year-track"><div class="forecast-year-fill ${row.overdue ? 'urgent' : row.critical ? 'soon' : 'planned'}" style="width:${Math.max(pct, row.total ? 8 : 0)}%"></div></div>
+            <div class="forecast-year-foot">${deltaLabel}</div>
           </div>`;
         }).join('')}
       </div>
@@ -576,27 +633,35 @@ function refreshProjections() {
   // Category breakdown for projections
   const catBrkEl = document.getElementById('projCategoryBreakdown');
   const catTotals = {};
-  assets.forEach(a => { if (a.replaceDate && a.replaceCost) catTotals[a.category] = (catTotals[a.category] || 0) + a.replaceCost; });
+  const catCounts = {};
+  assets.forEach(a => {
+    if (!a.replaceDate || !a.replaceCost) return;
+    catTotals[a.category] = (catTotals[a.category] || 0) + a.replaceCost;
+    catCounts[a.category] = (catCounts[a.category] || 0) + 1;
+  });
   const catEntries = Object.entries(catTotals).sort((a, b) => b[1] - a[1]);
   if (!catEntries.length) {
     catBrkEl.innerHTML = '<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">Add assets to see breakdown</div></div>';
   } else {
-    const grandTotal = catEntries.reduce((s, [,v]) => s + v, 0);
-    catBrkEl.innerHTML = catEntries.map(([k, v]) => {
-      const pct = ((v / grandTotal) * 100).toFixed(1);
-      return `<div style="margin-bottom:12px">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-          <span style="font-size:12px;font-weight:600">${k}</span>
-          <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text-mid)">${fmtCurrency(v)} <span style="color:var(--text-light)">(${pct}%)</span></span>
-        </div>
-        <div style="height:8px;background:#e8ecf3;border-radius:4px;overflow:hidden">
-          <div style="width:${pct}%;height:100%;background:var(--navy-light);border-radius:4px"></div>
-        </div>
-      </div>`;
-    }).join('') + `<div style="padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between">
-      <span style="font-size:13px;font-weight:700">Total</span>
-      <span style="font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:var(--navy)">${fmtCurrency(grandTotal)}</span>
-    </div>`;
+    const grandTotal = catEntries.reduce((sum, [,v]) => sum + v, 0);
+    const dominant = catEntries[0];
+    catBrkEl.innerHTML = `
+      <div class="breakdown-summary">Largest exposure: <strong>${dominant[0]}</strong> at ${fmtCurrency(dominant[1])}</div>
+      <div class="breakdown-list">
+        ${catEntries.map(([category, value]) => {
+          const pct = ((value / grandTotal) * 100).toFixed(1);
+          return `<div class="breakdown-row">
+            <div class="breakdown-head">
+              <div class="breakdown-name">${category}</div>
+              <div class="breakdown-meta">${catCounts[category]} asset${catCounts[category] === 1 ? '' : 's'} · ${pct}%</div>
+            </div>
+            <div class="breakdown-track"><div class="breakdown-fill" style="width:${pct}%"></div></div>
+            <div class="breakdown-total">${fmtCurrency(value)}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="breakdown-footer"><span>Total</span><strong>${fmtCurrency(grandTotal)}</strong></div>
+    `;
   }
 
   // Projection table
@@ -607,8 +672,8 @@ function refreshProjections() {
   } else {
     tbody.innerHTML = projAssets.map(a => {
       const y = new Date(a.replaceDate).getFullYear();
-      const overdue = new Date(a.replaceDate) < now;
-      const priority = overdue ? '<span class="tag tag-critical">Overdue</span>' : a.condition === 'Critical' ? '<span class="tag tag-critical">Critical</span>' : a.condition === 'Poor' ? '<span class="tag tag-poor">High</span>' : '<span class="tag tag-good">Normal</span>';
+      const status = getReplacementStatus(a, now);
+      const priority = status.level === 'urgent' ? '<span class="tag tag-critical">Overdue</span>' : a.condition === 'Critical' ? '<span class="tag tag-critical">Critical</span>' : a.condition === 'Poor' || status.level === 'soon' ? '<span class="tag tag-poor">High</span>' : '<span class="tag tag-good">Normal</span>';
       return `<tr onclick="showDetail('${a.id}')" style="cursor:pointer">
         <td style="font-family:'DM Mono',monospace;font-weight:600">${y}</td>
         <td><strong>${a.name}</strong></td>
@@ -964,85 +1029,113 @@ function refreshBudgetAnalysis() {
   const currentYear = now.getFullYear();
 
   // KPIs
-  const totalReplCost = assets.reduce((s, a) => s + (a.replaceCost || 0), 0);
+  const totalReplCost = assets.reduce((sum, a) => sum + (a.replaceCost || 0), 0);
   const overdueAssets = assets.filter(a => a.replaceDate && new Date(a.replaceDate) < now);
-  const overdueCost = overdueAssets.reduce((s, a) => s + (a.replaceCost || 0), 0);
+  const overdueCost = overdueAssets.reduce((sum, a) => sum + (a.replaceCost || 0), 0);
   const in5yr = assets.filter(a => {
     if (!a.replaceDate) return false;
-    const yr = new Date(a.replaceDate).getFullYear();
-    return yr >= currentYear && yr <= currentYear + 5;
+    const year = new Date(a.replaceDate).getFullYear();
+    return year >= currentYear && year <= currentYear + 5;
   });
-  const in5yrCost = in5yr.reduce((s, a) => s + (a.replaceCost || 0), 0);
-  const criticalCost = assets.filter(a => a.condition === 'Critical' || a.condition === 'Poor').reduce((s, a) => s + (a.replaceCost || 0), 0);
+  const in5yrCost = in5yr.reduce((sum, a) => sum + (a.replaceCost || 0), 0);
+  const criticalCost = assets.filter(a => a.condition === 'Critical' || a.condition === 'Poor').reduce((sum, a) => sum + (a.replaceCost || 0), 0);
+  const nearTermCost = assets.filter(a => a.replaceDate && new Date(a.replaceDate) <= new Date(currentYear + 1, now.getMonth(), now.getDate())).reduce((sum, a) => sum + (a.replaceCost || 0), 0);
 
   document.getElementById('budgetKpiGrid').innerHTML = `
     <div class="kpi-card red"><div class="kpi-label">Overdue Replacement Cost</div><div class="kpi-value">${fmtCurrency(overdueCost)}</div><div class="kpi-sub">${overdueAssets.length} assets past due date</div><div class="kpi-icon">⏰</div></div>
-    <div class="kpi-card gold"><div class="kpi-label">5-Year Capital Need</div><div class="kpi-value">${fmtCurrency(in5yrCost)}</div><div class="kpi-sub">${in5yr.length} assets, ${currentYear}–${currentYear+5}</div><div class="kpi-icon">📅</div></div>
+    <div class="kpi-card gold"><div class="kpi-label">5-Year Capital Need</div><div class="kpi-value">${fmtCurrency(in5yrCost)}</div><div class="kpi-sub">${in5yr.length} assets, ${currentYear}–${currentYear + 5}</div><div class="kpi-icon">📅</div></div>
     <div class="kpi-card teal"><div class="kpi-label">Poor/Critical Asset Cost</div><div class="kpi-value">${fmtCurrency(criticalCost)}</div><div class="kpi-sub">Total for poor/critical condition assets</div><div class="kpi-icon">⚠️</div></div>
-    <div class="kpi-card green"><div class="kpi-label">Total Portfolio Value</div><div class="kpi-value">${fmtCurrency(totalReplCost)}</div><div class="kpi-sub">Est. replacement value, all assets</div><div class="kpi-icon">💰</div></div>
+    <div class="kpi-card green"><div class="kpi-label">Near-Term 12-Month Cost</div><div class="kpi-value">${fmtCurrency(nearTermCost)}</div><div class="kpi-sub">Assets due within the next year</div><div class="kpi-icon">🕒</div></div>
   `;
 
   // Annual chart (10 years)
-  const years = Array.from({length:10}, (_, i) => currentYear + i);
+  const years = Array.from({length: 10}, (_, i) => currentYear + i);
   const yearData = {};
-  years.forEach(y => yearData[y] = 0);
+  years.forEach(y => { yearData[y] = 0; });
   assets.forEach(a => {
     if (!a.replaceDate || !a.replaceCost) return;
-    const y = new Date(a.replaceDate).getFullYear();
-    if (yearData[y] !== undefined) yearData[y] += a.replaceCost;
+    const year = new Date(a.replaceDate).getFullYear();
+    if (yearData[year] !== undefined) yearData[year] += a.replaceCost;
   });
   const maxY = Math.max(...Object.values(yearData), 1);
-  const annualEl = document.getElementById('budgetAnnualChart');
-  annualEl.innerHTML = `<div class="bar-chart" style="height:120px;align-items:flex-end;gap:8px;margin-top:16px;">` +
-    years.map(y => {
-      const v = yearData[y];
-      const h = Math.max(4, Math.round((v / maxY) * 110));
-      const color = v > maxY * 0.7 ? '#c0392b' : v > maxY * 0.4 ? '#d4850a' : '#1a7a6e';
-      return `<div class="bar-col">
-        <div style="font-size:9px;font-weight:600;color:var(--text-mid);font-family:'DM Mono',monospace;margin-bottom:3px;">${fmtCurrency(v)}</div>
-        <div class="bar-fill" style="height:${h}px;background:${color}"></div>
-        <div class="bar-label" style="font-size:10px;margin-top:4px;">${y}</div>
-      </div>`;
-    }).join('') + `</div>`;
+  const yearRows = years.map(year => {
+    const items = assets.filter(a => a.replaceDate && new Date(a.replaceDate).getFullYear() === year);
+    return {
+      year,
+      total: yearData[year],
+      count: items.length,
+      overdue: items.filter(a => new Date(a.replaceDate) < now).length,
+      poor: items.filter(a => a.condition === 'Critical' || a.condition === 'Poor').length
+    };
+  });
+  document.getElementById('budgetAnnualChart').innerHTML = `
+    <div class="budget-grid">
+      ${yearRows.map(row => {
+        const pct = row.total ? (row.total / maxY) * 100 : 0;
+        return `<div class="budget-year-card">
+          <div class="budget-year-head">
+            <div>
+              <div class="budget-year">${row.year}</div>
+              <div class="budget-year-sub">${row.count} asset${row.count === 1 ? '' : 's'}</div>
+            </div>
+            <div class="budget-year-value">${row.total ? fmtCurrency(row.total) : '—'}</div>
+          </div>
+          <div class="budget-year-track"><div class="budget-year-fill ${row.overdue ? 'urgent' : row.poor ? 'soon' : 'planned'}" style="width:${Math.max(pct, row.total ? 8 : 0)}%"></div></div>
+          <div class="budget-year-foot">${row.overdue ? `${row.overdue} overdue` : row.poor ? `${row.poor} high risk` : getYearLabel(currentYear, row.year)}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
 
   // Condition cost breakdown
-  const condCosts = {Good:0, Fair:0, Poor:0, Critical:0};
-  const condCounts2 = {Good:0, Fair:0, Poor:0, Critical:0};
+  const condCosts = { Good: 0, Fair: 0, Poor: 0, Critical: 0 };
+  const condCounts = { Good: 0, Fair: 0, Poor: 0, Critical: 0 };
   assets.forEach(a => {
     if (condCosts[a.condition] !== undefined) {
       condCosts[a.condition] += (a.replaceCost || 0);
-      condCounts2[a.condition]++;
+      condCounts[a.condition]++;
     }
   });
-  const condColors = {Good:'#27ae60', Fair:'#e8b04a', Poor:'#e67e22', Critical:'#c0392b'};
-  const grandCondTotal = Object.values(condCosts).reduce((s,v)=>s+v,0)||1;
-  document.getElementById('budgetConditionBreakdown').innerHTML = ['Critical','Poor','Fair','Good'].map(c => {
-    const pct = ((condCosts[c]/grandCondTotal)*100).toFixed(1);
-    return `<div style="margin-bottom:14px;">
-      <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
-        <span style="font-size:12px;font-weight:600;color:${condColors[c]}">${c} (${condCounts2[c]} assets)</span>
-        <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text-mid)">${fmtCurrency(condCosts[c])} <span style="color:var(--text-light)">(${pct}%)</span></span>
+  const condColors = { Good:'#27ae60', Fair:'#e8b04a', Poor:'#e67e22', Critical:'#c0392b' };
+  const grandCondTotal = Object.values(condCosts).reduce((sum, value) => sum + value, 0) || 1;
+  const condOrder = ['Critical', 'Poor', 'Fair', 'Good'];
+  document.getElementById('budgetConditionBreakdown').innerHTML = `
+    <div class="condition-stack">
+      <div class="condition-track">
+        ${condOrder.map(c => {
+          const pct = ((condCosts[c] / grandCondTotal) * 100).toFixed(1);
+          return `<div class="condition-seg ${c.toLowerCase()}" style="width:${pct}%"></div>`;
+        }).join('')}
       </div>
-      <div style="height:10px;background:#e8ecf3;border-radius:5px;overflow:hidden">
-        <div style="width:${pct}%;height:100%;background:${condColors[c]};border-radius:5px;"></div>
+      <div class="condition-list">
+        ${condOrder.map(c => {
+          const pct = ((condCosts[c] / grandCondTotal) * 100).toFixed(1);
+          return `<div class="condition-row">
+            <div class="condition-head">
+              <span class="condition-name" style="color:${condColors[c]}">${c}</span>
+              <span class="condition-meta">${condCounts[c]} assets · ${fmtCurrency(condCosts[c])}</span>
+            </div>
+            <div class="condition-track small"><div class="condition-fill" style="width:${pct}%;background:${condColors[c]};"></div></div>
+          </div>`;
+        }).join('')}
       </div>
     </div>`;
-  }).join('');
 
   // Top 20 most costly
   const top20 = [...assets]
-    .filter(a => a.replaceCost > 0)
-    .sort((a,b) => b.replaceCost - a.replaceCost)
+    .filter(a => (a.replaceCost || 0) > 0)
+    .sort((a, b) => (b.replaceCost || 0) - (a.replaceCost || 0))
     .slice(0, 20);
+  const maxTop20 = top20[0]?.replaceCost || 1;
   document.getElementById('budgetTop20Body').innerHTML = top20.map((a, i) => {
-    const overdue = a.replaceDate && new Date(a.replaceDate) < now;
+    const status = getReplacementStatus(a, now);
+    const costPct = ((a.replaceCost || 0) / maxTop20) * 100;
     return `<tr onclick="showDetail('${a.id}')" style="cursor:pointer">
-      <td style="font-family:'DM Mono',monospace;font-weight:700;color:var(--text-light)">#${i+1}</td>
-      <td><strong>${a.name}</strong></td>
-      <td style="font-size:12px;color:var(--text-mid)">${(a.location||'').replace(/^\d+-\s*/,'')}</td>
+      <td style="font-family:'DM Mono',monospace;font-weight:700;color:var(--text-light)">#${i + 1}</td>
+      <td><strong>${a.name}</strong><div class="row-mini-bar"><div class="row-mini-fill" style="width:${Math.max(costPct, 8)}%"></div></div></td>
+      <td style="font-size:12px;color:var(--text-mid)">${(a.location || '').replace(/^\d+-\s*/, '')}</td>
       <td><span class="tag tag-blue" style="font-size:10px">${a.category}</span></td>
       <td>${condTag(a.condition)}</td>
-      <td style="font-size:12px;color:${overdue?'var(--red)':'var(--text)'}${overdue?';font-weight:600':''}">${a.replaceDate ? fmtDate(a.replaceDate) : '—'}${overdue?' ⚠️':''}</td>
+      <td><span class="tag ${status.level === 'urgent' ? 'tag-critical' : status.level === 'soon' ? 'tag-poor' : 'tag-good'}">${status.label}</span> <span style="font-size:12px;color:${status.level === 'urgent' ? 'var(--red)' : 'var(--text)'}">${a.replaceDate ? fmtDate(a.replaceDate) : '—'}</span></td>
       <td style="font-family:'DM Mono',monospace;font-weight:700;color:var(--teal);font-size:14px">${fmtCurrency(a.replaceCost)}</td>
     </tr>`;
   }).join('');
@@ -1051,23 +1144,26 @@ function refreshBudgetAnalysis() {
   const deptTotals = {};
   const deptCounts = {};
   assets.forEach(a => {
-    const d = (a.location||'Unknown').replace(/^\d+-\s*/,'').trim() || 'Unknown';
-    deptTotals[d] = (deptTotals[d]||0) + (a.replaceCost||0);
-    deptCounts[d] = (deptCounts[d]||0) + 1;
+    const department = (a.location || 'Unknown').replace(/^\d+-\s*/, '').trim() || 'Unknown';
+    deptTotals[department] = (deptTotals[department] || 0) + (a.replaceCost || 0);
+    deptCounts[department] = (deptCounts[department] || 0) + 1;
   });
-  const deptEntries = Object.entries(deptTotals).sort((a,b)=>b[1]-a[1]).slice(0,15);
+  const deptEntries = Object.entries(deptTotals).sort((a, b) => b[1] - a[1]).slice(0, 15);
   const maxDept = deptEntries[0]?.[1] || 1;
-  document.getElementById('budgetDeptRanking').innerHTML = deptEntries.map(([name, cost], i) => `
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
-      <div style="font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:var(--text-light);width:24px;text-align:right">#${i+1}</div>
-      <div style="width:180px;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${name}">${name}</div>
-      <div style="flex:1;height:10px;background:#e8ecf3;border-radius:5px;overflow:hidden">
-        <div style="width:${(cost/maxDept*100).toFixed(1)}%;height:100%;background:var(--navy-light);border-radius:5px;"></div>
+  document.getElementById('budgetDeptRanking').innerHTML = deptEntries.map(([name, cost], i) => {
+    const pct = (cost / maxDept) * 100;
+    return `<div class="budget-rank-row">
+      <div class="budget-rank-index">#${i + 1}</div>
+      <div class="budget-rank-body">
+        <div class="budget-rank-head">
+          <span class="budget-rank-name">${name}</span>
+          <span class="budget-rank-cost">${fmtCurrency(cost)}</span>
+        </div>
+        <div class="budget-rank-track"><div class="budget-rank-fill" style="width:${Math.max(pct, 8)}%"></div></div>
+        <div class="budget-rank-meta">${deptCounts[name]} assets · ${((cost / (Object.values(deptTotals).reduce((sum, value) => sum + value, 0) || 1)) * 100).toFixed(1)}% of total</div>
       </div>
-      <div style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:var(--navy);width:80px;text-align:right">${fmtCurrency(cost)}</div>
-      <div style="font-size:11px;color:var(--text-light);width:60px;text-align:right">${deptCounts[name]} assets</div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 // ====================== EXPORT TO EXCEL ======================
