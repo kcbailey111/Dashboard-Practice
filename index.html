@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="description" content="City of Spartanburg Asset Management Dashboard">
-<title>City of Spartanburg â€” Asset Management</title>
+<title>City of Spartanburg — Asset Management</title>
 <!-- SheetJS for Excel export -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
@@ -24,10 +24,10 @@
   </div>
   <div class="header-right">
     <span class="header-date" id="headerDate"></span>
-    <button class="btn-outline" onclick="document.getElementById('csvFileInput').click()">â¬† Import CSV</button>
+    <button class="btn-outline" onclick="document.getElementById('csvFileInput').click()">⬆ Import CSV</button>
     <input type="file" id="csvFileInput" accept=".csv" onchange="importCSV(event)">
-    <button class="btn-outline" onclick="exportToExcel()">â¬‡ Export Excel</button>
-    <button class="btn-outline" onclick="openExport()">â¬‡ Export CSV</button>
+    <button class="btn-outline" onclick="exportToExcel()">⬇ Export Excel</button>
+    <button class="btn-outline" onclick="openExport()">⬇ Export CSV</button>
     <button class="btn-primary" onclick="openAddAsset()">+ Add Asset</button>
   </div>
 </header>
@@ -49,7 +49,7 @@
 <div class="modal-overlay" id="userPromptModal">
   <div class="modal small">
     <div class="modal-header">
-      <div class="modal-title">ðŸ‘¤ Who are you?</div>
+      <div class="modal-title">👤 Who are you?</div>
     </div>
     <div class="modal-body">
       <p style="font-size:13px;color:var(--text-mid);margin-bottom:16px;">
@@ -65,21 +65,21 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn-save" onclick="saveManualUser()">Continue â†’</button>
+      <button class="btn-save" onclick="saveManualUser()">Continue →</button>
     </div>
   </div>
 </div>
 
 <!-- NAV TABS -->
 <nav class="nav-bar">
-  <div class="nav-tab active" onclick="showPage('dashboard', this)">ðŸ“Š Dashboard</div>
-  <div class="nav-tab" onclick="showPage('assets', this)">ðŸ—‚ All Assets</div>
-  <div class="nav-tab" onclick="showPage('projections', this)">ðŸ“ˆ Cost Projections</div>
-  <div class="nav-tab" onclick="showPage('replacements', this)">ðŸ”„ Replacement Schedule</div>
-  <div class="nav-tab" onclick="showPage('alerts', this)">ðŸ”” Alerts <span id="alertBadge"></span></div>
-  <div class="nav-tab" onclick="showPage('departments', this)">ðŸ› By Department</div>
-  <div class="nav-tab" onclick="showPage('budget', this)">ðŸ’° Budget Analysis</div>
-  <div class="nav-tab" onclick="showPage('auditlog', this)">ðŸ“‹ Audit Log</div>
+  <div class="nav-tab active" onclick="showPage('dashboard', this)">📊 Dashboard</div>
+  <div class="nav-tab" onclick="showPage('assets', this)">🗂 All Assets</div>
+  <div class="nav-tab" onclick="showPage('projections', this)">📈 Cost Projections</div>
+  <div class="nav-tab" onclick="showPage('replacements', this)">🔄 Replacement Schedule</div>
+  <div class="nav-tab" onclick="showPage('alerts', this)">🔔 Alerts <span id="alertBadge"></span></div>
+  <div class="nav-tab" onclick="showPage('departments', this)">🏛 By Department</div>
+  <div class="nav-tab" onclick="showPage('budget', this)">💰 Budget Analysis</div>
+  <div class="nav-tab" onclick="showPage('auditlog', this)">📋 Audit Log</div>
 </nav>
 
 <div class="main">
@@ -89,27 +89,27 @@
   <div class="kpi-grid">
     <div class="kpi-card gold">
       <div class="kpi-label">Total Assets</div>
-      <div class="kpi-value" id="kpiTotal">â€”</div>
+      <div class="kpi-value" id="kpiTotal">—</div>
       <div class="kpi-sub">Across <span id="kpiCats">0</span> categories</div>
-      <div class="kpi-icon">ðŸ—‚</div>
+      <div class="kpi-icon">🗂</div>
     </div>
     <div class="kpi-card red">
       <div class="kpi-label">Critical / Poor Condition</div>
-      <div class="kpi-value" id="kpiCritical">â€”</div>
+      <div class="kpi-value" id="kpiCritical">—</div>
       <div class="kpi-sub">Require <span>immediate attention</span></div>
-      <div class="kpi-icon">âš ï¸</div>
+      <div class="kpi-icon">⚠️</div>
     </div>
     <div class="kpi-card teal">
       <div class="kpi-label">Replacements Due (2 yrs)</div>
-      <div class="kpi-value" id="kpiDue">â€”</div>
+      <div class="kpi-value" id="kpiDue">—</div>
       <div class="kpi-sub">Est. cost: <span id="kpiDueCost">$0</span></div>
-      <div class="kpi-icon">ðŸ”„</div>
+      <div class="kpi-icon">🔄</div>
     </div>
     <div class="kpi-card green">
       <div class="kpi-label">5-Year Cost Projection</div>
-      <div class="kpi-value" id="kpi5yr">â€”</div>
+      <div class="kpi-value" id="kpi5yr">—</div>
       <div class="kpi-sub">Total replacement spend</div>
-      <div class="kpi-icon">ðŸ“ˆ</div>
+      <div class="kpi-icon">📈</div>
     </div>
   </div>
 
@@ -123,7 +123,7 @@
         </div>
       </div>
       <div id="conditionDonut">
-        <div class="empty"><div class="empty-icon">ðŸ“Š</div><div class="empty-text">Add assets to see condition overview</div></div>
+        <div class="empty"><div class="empty-icon">📊</div><div class="empty-text">Add assets to see condition overview</div></div>
       </div>
     </div>
 
@@ -136,7 +136,7 @@
         </div>
       </div>
       <div id="upcomingList">
-        <div class="empty"><div class="empty-icon">ðŸ”„</div><div class="empty-text">No upcoming replacements scheduled</div></div>
+        <div class="empty"><div class="empty-icon">🔄</div><div class="empty-text">No upcoming replacements scheduled</div></div>
       </div>
     </div>
   </div>
@@ -151,7 +151,7 @@
         </div>
       </div>
       <div id="categoryChart">
-        <div class="empty"><div class="empty-icon">ðŸ“Š</div><div class="empty-text">Add assets to see cost breakdown</div></div>
+        <div class="empty"><div class="empty-icon">📊</div><div class="empty-text">Add assets to see cost breakdown</div></div>
       </div>
     </div>
 
@@ -164,7 +164,7 @@
         </div>
       </div>
       <div id="recentActivity">
-        <div class="empty"><div class="empty-icon">ðŸ“‹</div><div class="empty-text">No recent activity</div></div>
+        <div class="empty"><div class="empty-icon">📋</div><div class="empty-text">No recent activity</div></div>
       </div>
     </div>
   </div>
@@ -174,8 +174,8 @@
 <div class="page" id="page-assets">
   <div class="filter-bar">
     <div class="search-box">
-      <span class="search-icon">ðŸ”</span>
-      <input type="text" id="searchInput" placeholder="Search assets by name, ID, or locationâ€¦" oninput="filterAssets()">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="Search assets by name, ID, or location…" oninput="filterAssets()">
     </div>
     <select class="filter-select" id="filterCategory" onchange="filterAssets()">
       <option value="">All Categories</option>
@@ -217,7 +217,7 @@
           </tr>
         </thead>
         <tbody id="assetTableBody">
-          <tr><td colspan="11"><div class="empty"><div class="empty-icon">ðŸ—‚</div><div class="empty-text">No assets added yet. Click "+ Add Asset" to get started.</div></div></td></tr>
+          <tr><td colspan="11"><div class="empty"><div class="empty-icon">🗂</div><div class="empty-text">No assets added yet. Click "+ Add Asset" to get started.</div></div></td></tr>
         </tbody>
       </table>
     </div>
@@ -235,7 +235,7 @@
         </div>
       </div>
       <div id="projectionBars">
-        <div class="empty"><div class="empty-icon">ðŸ“ˆ</div><div class="empty-text">Add assets with replacement dates to see projections</div></div>
+        <div class="empty"><div class="empty-icon">📈</div><div class="empty-text">Add assets with replacement dates to see projections</div></div>
       </div>
     </div>
     <div class="card">
@@ -246,7 +246,7 @@
         </div>
       </div>
       <div id="projCategoryBreakdown">
-        <div class="empty"><div class="empty-icon">ðŸ“Š</div><div class="empty-text">Add assets to see breakdown</div></div>
+        <div class="empty"><div class="empty-icon">📊</div><div class="empty-text">Add assets to see breakdown</div></div>
       </div>
     </div>
   </div>
@@ -262,7 +262,7 @@
           </tr>
         </thead>
         <tbody id="projTableBody">
-          <tr><td colspan="6"><div class="empty"><div class="empty-icon">ðŸ“‹</div><div class="empty-text">No projection data available</div></div></td></tr>
+          <tr><td colspan="6"><div class="empty"><div class="empty-icon">📋</div><div class="empty-text">No projection data available</div></div></td></tr>
         </tbody>
       </table>
     </div>
@@ -283,13 +283,13 @@
     <div class="card">
       <div class="section-title" style="margin-bottom:16px;">Replacement Timeline</div>
       <div id="replacementTimeline">
-        <div class="empty"><div class="empty-icon">ðŸ“…</div><div class="empty-text">No replacement data to display</div></div>
+        <div class="empty"><div class="empty-icon">📅</div><div class="empty-text">No replacement data to display</div></div>
       </div>
     </div>
     <div class="card">
       <div class="section-title" style="margin-bottom:16px;">Budget Summary</div>
       <div id="budgetSummary">
-        <div class="empty"><div class="empty-icon">ðŸ’°</div><div class="empty-text">Add assets to see budget summary</div></div>
+        <div class="empty"><div class="empty-icon">💰</div><div class="empty-text">Add assets to see budget summary</div></div>
       </div>
     </div>
   </div>
@@ -300,7 +300,7 @@
   <div class="card">
     <div class="section-title" style="margin-bottom:16px;">Active Alerts & Notifications</div>
     <div id="alertsList">
-      <div class="empty"><div class="empty-icon">âœ…</div><div class="empty-text">No alerts at this time</div></div>
+      <div class="empty"><div class="empty-icon">✅</div><div class="empty-text">No alerts at this time</div></div>
     </div>
   </div>
 </div>
@@ -309,8 +309,8 @@
 <div class="page" id="page-departments">
   <div class="filter-bar">
     <div class="search-box">
-      <span class="search-icon">ðŸ”</span>
-      <input type="text" id="deptSearch" placeholder="Search departmentsâ€¦" oninput="renderDeptPage()">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="deptSearch" placeholder="Search departments…" oninput="renderDeptPage()">
     </div>
     <select class="filter-select" id="deptCatFilter" onchange="renderDeptPage()">
       <option value="">All Categories</option>
@@ -396,8 +396,8 @@
 <div class="page" id="page-auditlog">
   <div class="audit-filters">
     <div class="search-box" style="min-width:220px;">
-      <span class="search-icon">ðŸ”</span>
-      <input type="text" id="auditSearch" placeholder="Search by asset name or userâ€¦" oninput="renderAuditLog()">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="auditSearch" placeholder="Search by asset name or user…" oninput="renderAuditLog()">
     </div>
     <select class="filter-select" id="auditActionFilter" onchange="renderAuditLog()">
       <option value="">All Actions</option>
@@ -415,7 +415,7 @@
       <option value="week">This Week</option>
       <option value="month">This Month</option>
     </select>
-    <button class="btn-outline" onclick="exportAuditLog()" style="color:var(--navy);border-color:var(--border);background:white;padding:8px 14px;">â¬‡ Export Audit Log</button>
+    <button class="btn-outline" onclick="exportAuditLog()" style="color:var(--navy);border-color:var(--border);background:white;padding:8px 14px;">⬇ Export Audit Log</button>
     <span id="auditCount" style="font-size:12px;color:var(--text-light);white-space:nowrap;margin-left:auto;"></span>
   </div>
 
@@ -424,7 +424,7 @@
 
   <div class="card">
     <div id="auditLogList">
-      <div class="empty"><div class="empty-icon">ðŸ“‹</div><div class="empty-text">No audit entries yet. Changes you make to assets will appear here.</div></div>
+      <div class="empty"><div class="empty-icon">📋</div><div class="empty-text">No audit entries yet. Changes you make to assets will appear here.</div></div>
     </div>
   </div>
 </div>
@@ -437,7 +437,7 @@
   <div class="modal">
     <div class="modal-header">
       <div class="modal-title" id="modalTitle">Add New Asset</div>
-      <button class="modal-close" onclick="closeModal()">âœ•</button>
+      <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
     <div class="modal-body">
       <div class="form-grid">
@@ -452,7 +452,7 @@
         <div class="form-group">
           <label>Category *</label>
           <select id="fCategory">
-            <option value="">Select categoryâ€¦</option>
+            <option value="">Select category…</option>
             <option>Fleet Vehicles</option>
             <option>Buildings & Facilities</option>
             <option>IT Equipment</option>
@@ -501,24 +501,24 @@
           </select>
         </div>
         <div class="form-group full">
-          <label>Condition Rating (1â€“5 stars)</label>
+          <label>Condition Rating (1–5 stars)</label>
           <div class="stars" id="starRating">
-            <span class="star" data-val="1">â˜…</span>
-            <span class="star" data-val="2">â˜…</span>
-            <span class="star" data-val="3">â˜…</span>
-            <span class="star" data-val="4">â˜…</span>
-            <span class="star" data-val="5">â˜…</span>
+            <span class="star" data-val="1">★</span>
+            <span class="star" data-val="2">★</span>
+            <span class="star" data-val="3">★</span>
+            <span class="star" data-val="4">★</span>
+            <span class="star" data-val="5">★</span>
           </div>
         </div>
         <div class="form-group full">
           <label>Notes / Description</label>
-          <textarea id="fNotes" placeholder="Any relevant notes, maintenance history, or observationsâ€¦"></textarea>
+          <textarea id="fNotes" placeholder="Any relevant notes, maintenance history, or observations…"></textarea>
         </div>
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-      <button class="btn-save" onclick="saveAsset()">ðŸ’¾ Save Asset</button>
+      <button class="btn-save" onclick="saveAsset()">💾 Save Asset</button>
     </div>
   </div>
 </div>
@@ -528,12 +528,12 @@
   <div class="modal">
     <div class="modal-header">
       <div class="modal-title" id="detailTitle">Asset Detail</div>
-      <button class="modal-close" onclick="closeDetailModal()">âœ•</button>
+      <button class="modal-close" onclick="closeDetailModal()">✕</button>
     </div>
     <div class="modal-body" id="detailBody"></div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeDetailModal()">Close</button>
-      <button class="btn-save" id="detailEditBtn">âœï¸ Edit Asset</button>
+      <button class="btn-save" id="detailEditBtn">✏️ Edit Asset</button>
     </div>
   </div>
 </div>
@@ -541,4 +541,5 @@
 <script src="function.js"></script>
 </body>
 </html>
+
 
